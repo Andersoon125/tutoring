@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Madness - Anderson Avarell</title>
+    <link rel="stylesheet" href="assets/css/fromscratch.css">
+    <link href="assets/img/favicon.png" rel="icon">
+    <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+    <style>
+        body {
+            background-color: #2c3e50;
+            color: white;
+            font-family: Arial, sans-serif;
+            margin-left: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 80vh;
+            
+        }
+        h1 {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+        .counter {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        .maze-container {
+            position: relative;
+            display: grid;
+            gap: 1px;
+            border: 1px solid white;
+        }
+        .maze-cell {
+            width: 20px;
+            height: 20px;
+            background-color: #34495e;
+        }
+        .wall {
+            background-color: #34495e;
+        }
+        .path {
+            background-color: #2ecc71;
+        }
+        .player {
+            background-color: #e74c3c;
+        }
+        .exit {
+            background-color: #f39c12;
+        }
+        .play-again {
+            margin-top: 20px;
+            display: none;
+        }
+        button {
+            background-color: #27ae60;
+            color: white;
+            font-size: 16px;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #2ecc71;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="sidebar">
+        <h3>Anderson <br> Avarell</h3>
+        <a href="index.html">Home</a>
+        <a href="index.html#resume">Resume</a>
+        <a href="interests.html">Interests</a>
+        <a href="#">Game</a>
+    </header>
+
+<h1>Maze Madness!</h1>
+<p style="margin-top: 0px;">Use the arrow keys to navigate the maze.</p>
+<div class="counter" id="counter">Level: 1/5</div>
+<div class="maze-container" id="mazeContainer"></div>
+
+<div class="play-again" id="playAgain">
+    <p>Play Again?</p>
+    <button onclick="restartGame()">Yes</button>
+</div>
+
+<script>
+    let level = 1;
+    const maxLevel = 5;
+    let playerPosition = { x: 0, y: 0 };
+    let maze = [];
+    let rows = 5;
+    let cols = 5;
+    const mazeContainer = document.getElementById('mazeContainer');
+    const counterDisplay = document.getElementById('counter');
+    const playAgainDiv = document.getElementById('playAgain');
+
+    // Directions for moving in the maze
+    const directions = [
+        { x: 0, y: 1 },  // down
+        { x: 0, y: -1 }, // up
+        { x: 1, y: 0 },  // right
+        { x: -1, y: 0 }  // left
+    ];
+
+    // Initialize an empty maze with walls
+    function initializeMaze() {
+        maze = Array.from({ length: rows }, () => Array(cols).fill(1)); // 1 represents wall
+    }
+
+    // Generate a solvable maze using a recursive backtracking approach
+    function generateMaze(x, y) {
+        maze[y][x] = 0; // Mark the current cell as a path (0 means open space)
+
+        const shuffledDirections = directions.sort(() => Math.random() - 0.5); // Randomize directions to create random paths
+
+        for (let dir of shuffledDirections) {
+            const nx = x + dir.x * 2;
+            const ny = y + dir.y * 2;
+
+            if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && maze[ny][nx] === 1) {
+                maze[ny][nx] = 0; // Mark the new cell as a path
+                maze[y + dir.y][x + dir.x] = 0; // Mark the cell between as a path to ensure width is one space
+                generateMaze(nx, ny); // Recurse to the new position
+            }
+        }
+    }
+
+    // Ensure the exit is reachable by checking adjacent cells and creating an open path
+    function ensureExitPath() {
+        if (maze[rows - 1][cols - 1] !== 0) {
+            maze[rows - 1][cols - 1] = 0; // Make sure the exit is a path
+        }
+
+        // Ensure the cell adjacent to the exit is also open
+        if (maze[rows - 2][cols - 1] === 1) {
+            maze[rows - 2][cols - 1] = 0;
+        } else if (maze[rows - 1][cols - 2] === 1) {
+            maze[rows - 1][cols - 2] = 0;
+        }
+    }
+
+    // Check if a path exists from the start to the exit
+    function isSolvable() {
+        const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+        function dfs(x, y) {
+            if (x < 0 || x >= cols || y < 0 || y >= rows || visited[y][x] || maze[y][x] === 1) {
+                return false;
+            }
+
+            visited[y][x] = true;
+
+            if (x === cols - 1 && y === rows - 1) {
+                return true; // Found the exit
+            }
+
+            // Try all 4 directions
+            for (let dir of directions) {
+                const nx = x + dir.x;
+                const ny = y + dir.y;
+
+                if (dfs(nx, ny)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return dfs(0, 0); // Start DFS from the top-left corner
+    }
+
+    // Draw the maze on the grid
+    function drawMaze() {
+        mazeContainer.innerHTML = '';
+        mazeContainer.style.gridTemplateColumns = `repeat(${cols}, 20px)`; // Define the grid's column width
+        mazeContainer.style.gridTemplateRows = `repeat(${rows}, 20px)`; // Define the grid's row height
+
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                const cell = document.createElement('div');
+                cell.classList.add('maze-cell');
+
+                if (maze[y][x] === 1) {
+                    cell.classList.add('wall');
+                } else {
+                    cell.classList.add('path');
+                }
+
+                if (y === playerPosition.y && x === playerPosition.x) {
+                    cell.classList.add('player');
+                }
+
+                if (y === rows - 1 && x === cols - 1) {
+                    cell.classList.add('exit');
+                }
+
+                mazeContainer.appendChild(cell);
+            }
+        }
+    }
+
+    // Handle player movement with arrow keys
+    function movePlayer(direction) {
+        let newPos = { ...playerPosition };
+
+        if (direction === 'up' && playerPosition.y > 0 && maze[playerPosition.y - 1][playerPosition.x] === 0) {
+            newPos.y--;
+        } else if (direction === 'down' && playerPosition.y < rows - 1 && maze[playerPosition.y + 1][playerPosition.x] === 0) {
+            newPos.y++;
+        } else if (direction === 'left' && playerPosition.x > 0 && maze[playerPosition.y][playerPosition.x - 1] === 0) {
+            newPos.x--;
+        } else if (direction === 'right' && playerPosition.x < cols - 1 && maze[playerPosition.y][playerPosition.x + 1] === 0) {
+            newPos.x++;
+        }
+
+        playerPosition = newPos;
+        drawMaze();
+
+        // Check if the player reached the exit
+        if (playerPosition.x === cols - 1 && playerPosition.y === rows - 1) {
+            if (level === maxLevel) {
+                setTimeout(() => {
+                    alert("Congratulations! You win!");
+                    showPlayAgain();
+                }, 500);
+            } else {
+                level++; // Increment level
+                counterDisplay.textContent = `Level: ${level}/${maxLevel}`;
+                playerPosition = { x: 0, y: 0 }; // Reset player position
+                generateNewMaze(); // Generate a new maze
+            }
+        }
+    }
+
+    // Listen for arrow key presses to move the player
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+            movePlayer('up');
+        } else if (e.key === 'ArrowDown') {
+            movePlayer('down');
+        } else if (e.key === 'ArrowLeft') {
+            movePlayer('left');
+        } else if (e.key === 'ArrowRight') {
+            movePlayer('right');
+        }
+    });
+
+    // Generate a new maze based on the current level
+    function generateNewMaze() {
+        rows = level * 5;
+        cols = level * 5;
+        initializeMaze();
+        generateMaze(0, 0); // Start generating maze from top-left corner
+        ensureExitPath(); // Ensure the exit is accessible
+
+        // Ensure maze is solvable
+        while (!isSolvable()) {
+            initializeMaze(); // Reset maze
+            generateMaze(0, 0); // Regenerate maze
+            ensureExitPath(); // Ensure exit path
+        }
+
+        drawMaze(); // Draw the generated maze
+    }
+
+    // Display the play again prompt
+    function showPlayAgain() {
+        playAgainDiv.style.display = 'block';
+    }
+
+    // Restart the game when the player clicks "Yes"
+    function restartGame() {
+        level = 1;
+        counterDisplay.textContent = `Level: ${level}/${maxLevel}`;
+        playAgainDiv.style.display = 'none';
+        playerPosition = { x: 0, y: 0 };
+        generateNewMaze(); // Generate the first maze
+    }
+
+    // Initialize the game
+    generateNewMaze();
+</script>
+
+<footer>
+    © Copyright Anderson Avarell 2024
+</footer>
+
+</body>
+</html>
